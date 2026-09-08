@@ -1,0 +1,32 @@
+# Reference configuration for the network-anomaly autoencoder (NSL-KDD).
+# Copy this file and adjust paths/values to reproduce a specific run.
+
+dataset:
+  path: "data/KDDTrain+.csv"
+  schema: "nsl_kdd"
+
+splits:
+  train_ratio: 0.70
+  val_ratio:   0.10
+  test_ratio:  0.20
+  random_seed: 42
+
+architecture:
+  encoder_layers: [128, 64, 32]
+  bottleneck_dim: 16
+  activation: "relu"
+  dropout_rate: 0.2
+
+training:
+  learning_rate: 0.001
+  batch_size:    256
+  max_epochs:    100
+  patience:      10
+  lr_schedule:   "none"
+  random_seed:   42
+
+threshold:
+  percentile: 95
+
+output:
+  artefact_dir: "runs"

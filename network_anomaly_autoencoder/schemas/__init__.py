@@ -1,0 +1,7 @@
+"""
+schemas
+=======
+Dataset schema definitions for NSL-KDD, CICIDS2017, and UNSW-NB15.
+Each module exposes FEATURE_COUNT, LABEL_COLUMN, NORMAL_LABEL,
+CATEGORICAL_COLUMNS, NUMERICAL_COLUMNS, and REQUIRED_COLUMNS.
+"""

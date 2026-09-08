@@ -1,0 +1,4 @@
+.kiro/
+./pytest_cache
+runs/
+.hypothesis/
