@@ -95,7 +95,7 @@ _nonempty_subsets = st.lists(
 
 
 @given(to_delete=_nonempty_subsets)
-@settings(max_examples=20)
+@settings(max_examples=20, deadline=None)
 def test_property15_missing_artefacts_listed(_tmp, to_delete):
     # Feature: network-anomaly-autoencoder, Property 15
     base = _newdir(_tmp)

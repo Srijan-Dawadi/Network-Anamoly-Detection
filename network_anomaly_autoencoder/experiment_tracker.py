@@ -218,13 +218,17 @@ class Experiment_Tracker:
     # Inference orchestration
     # ------------------------------------------------------------------
 
-    def run_inference(self, csv_path: str) -> Tuple[np.ndarray, np.ndarray]:
+    def run_inference(self, csv_path: str, run_dir: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
         """Run inference on a raw CSV file using a previously saved run dir.
 
         Parameters
         ----------
         csv_path : str
             Path to a CSV file containing records to classify.
+        run_dir : str, optional
+            Artefact directory holding ``model_weights.keras``, ``scaler.pkl``,
+            ``encoder.pkl``, and ``threshold.json``.  When omitted, the run
+            directory created by :meth:`setup` is used.
 
         Returns
         -------
@@ -236,9 +240,17 @@ class Experiment_Tracker:
         ArtifactNotFoundError
             If any of the four inference-critical artefact files is absent.
         """
-        if self._config is None or self._logger is None or self._run_dir is None:
-            self._logger = get_logger("network_anomaly_autoencoder")
-            self.setup()
+        config = load_config(self._yaml_path) if self._config is None else self._config
+        if run_dir is not None:
+            # Explicit artefact dir: do not create a fresh, empty run directory.
+            self._config = config
+            self._run_dir = run_dir
+            self._logger = self._logger or get_logger("network_anomaly_autoencoder")
+        else:
+            self._config = config
+            self._logger = self._logger or get_logger("network_anomaly_autoencoder")
+            if self._run_dir is None:
+                self.setup()
 
         config = self._config
         logger = self._logger

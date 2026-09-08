@@ -25,7 +25,7 @@ class _FakeTracker:
     def run_training(self):
         self.calls.append("train")
 
-    def run_inference(self, data):
+    def run_inference(self, data, run_dir=None):
         self.calls.append(("infer", data))
         import numpy as np
 
@@ -46,12 +46,35 @@ class TestRouting:
         assert fake_tracker.calls == ["train"]
         assert "Training completed" in capsys.readouterr().out
 
-    def test_infer_subcommand_routes_to_run_inference(self, fake_tracker):
+    def test_infer_subcommand_routes_to_run_inference(self, fake_tracker, monkeypatch):
+        monkeypatch.setattr(main_module, "_latest_run_dir", lambda _: "runs/00000000_000000")
         rc = main_module.main(
             ["infer", "--config", "configs/nsl_kdd_default.yaml", "--data", "data/x.csv"]
         )
         assert rc == 0
         assert fake_tracker.calls == [("infer", "data/x.csv")]
+
+    def test_infer_with_explicit_run_dir_routes(self, fake_tracker):
+        rc = main_module.main(
+            [
+                "infer",
+                "--config", "configs/nsl_kdd_default.yaml",
+                "--data", "data/x.csv",
+                "--run-dir", "runs/custom_run",
+            ]
+        )
+        assert rc == 0
+        assert fake_tracker.calls == [("infer", "data/x.csv")]
+
+    def test_infer_no_runs_returns_1(self, fake_tracker, monkeypatch, capsys):
+        def no_runs(_):
+            raise FileNotFoundError("Runs not found")
+        monkeypatch.setattr(main_module, "_latest_run_dir", no_runs)
+        rc = main_module.main(
+            ["infer", "--config", "configs/nsl_kdd_default.yaml", "--data", "data/x.csv"]
+        )
+        assert rc == 1
+        assert "Runs not found" in capsys.readouterr().err
 
 
 class TestErrorHandling:

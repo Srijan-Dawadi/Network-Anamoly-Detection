@@ -130,7 +130,18 @@ class TestSetup:
         run_dir = _find_run_dir(artefact_dir)
         assert os.path.isfile(os.path.join(run_dir, "experiment.log"))
 
-    def test_git_unavailable_logged(self, tmp_path):
+    def test_git_unavailable_logged(self, tmp_path, monkeypatch):
+        # Simulate git being absent/failing so the fallback is exercised
+        # deterministically, regardless of whether the process CWD is a repo.
+        import subprocess
+
+        class _FailedResult:
+            returncode = 128
+            stdout = ""
+
+        monkeypatch.setattr(
+            subprocess, "run", lambda *a, **k: _FailedResult()
+        )
         artefact_dir = str(tmp_path / "artefacts")
         yaml_path = _make_yaml(tmp_path, artefact_dir, "/nope.csv")
         tracker = Experiment_Tracker(yaml_path)

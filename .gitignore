@@ -1,4 +1,9 @@
 .kiro/
 ./pytest_cache
 runs/
+data/
 .hypothesis/
+__pycache__/
+*.egg-info/
+.coverage
+htmlcov/
