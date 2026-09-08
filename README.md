@@ -20,7 +20,13 @@ From the project root:
 .\run.ps1 infer -Data path\to\data.csv
 .\run.ps1 infer -RunDir runs\20260101_120000 -Data path\to\data.csv
 
-# 4. Run the full test suite (188 tests, ~96% coverage)
+# 4. View a human-readable report of the latest run
+.\run.ps1 report                      # prints metrics table to terminal
+.\run.ps1 report -Open                # ... and opens the plots (Windows)
+.\run.ps1 open                        # shorthand for `report -Open`
+.\run.ps1 -Open                       # same — action inferred from the flag
+
+# 5. Run the full test suite (195 tests, ~96% coverage)
 .\run.ps1 test
 ```
 
@@ -33,6 +39,8 @@ python scripts/make_data.py                 # download + clean NSL-KDD data
 python main.py train --config configs/nsl_kdd_default.yaml
 python main.py infer --config configs/nsl_kdd_default.yaml --data data/sample_infer.csv
 python main.py infer --config configs/nsl_kdd_default.yaml --data data.csv --run-dir runs/<timestamp>
+python main.py report --config configs/nsl_kdd_default.yaml
+python main.py report --config configs/nsl_kdd_default.yaml --run-dir runs/<timestamp> --open
 python -m pytest tests/ --cov=network_anomaly_autoencoder
 ```
 
@@ -59,6 +67,15 @@ Inference requires the four inference-critical artifacts
 (`model_weights.keras`, `scaler.pkl`, `encoder.pkl`, `threshold.json`); if any is
 missing, classification fails fast with a clear error.
 
+## Viewing results
+
+`.\run.ps1 report` reads a completed run's `metrics.json` and `threshold.json`
+and prints a readable summary (accuracy, AUC-ROC, precision/recall/F1, and the
+anomaly threshold). Add `-Open` (Windows) to open the run's plots —
+`confusion_matrix.png`, `roc_curve.png`, `re_histogram.png` — in the system
+default image viewer. `.\run.ps1 open` is a shorthand for `report -Open`, and
+`.\run.ps1 -Open` with no action word works the same way.
+
 ## Dataset
 
 `scripts/make_data.py` downloads the real NSL-KDD `KDDTrain+.csv` from a public
@@ -70,7 +87,7 @@ demo inference. Run with `--force` to re-download.
 ## Project layout
 
 ```
-main.py                                 CLI: train / infer
+main.py                                 CLI: train / infer / report
 configs/nsl_kdd_default.yaml            reference experiment configuration
 run.ps1                                 PowerShell convenience wrapper
 scripts/make_data.py                    NSL-KDD download + cleaning

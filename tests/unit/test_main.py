@@ -8,6 +8,7 @@ Validates Requirements 8.1 (CLI routing and error handling).
 
 from __future__ import annotations
 
+import json
 import sys
 
 import pytest
@@ -75,6 +76,105 @@ class TestRouting:
         )
         assert rc == 1
         assert "Runs not found" in capsys.readouterr().err
+
+
+class TestReport:
+    """report subcommand routes to the printer and handles missing runs (Req 8.1)."""
+
+    def test_report_defaults_to_latest_run(self, fake_tracker, monkeypatch):
+        calls = {}
+
+        def fake_print(run_dir, open_plots=False):
+            calls["run_dir"] = run_dir
+            calls["open_plots"] = open_plots
+
+        monkeypatch.setattr(main_module, "_latest_run_dir", lambda _: "runs/20260101_000000")
+        monkeypatch.setattr(main_module, "_print_experiment_report", fake_print)
+        rc = main_module.main(
+            ["report", "--config", "configs/nsl_kdd_default.yaml"]
+        )
+        assert rc == 0
+        assert calls == {"run_dir": "runs/20260101_000000", "open_plots": False}
+
+    def test_report_explicit_run_dir_routes(self, fake_tracker, monkeypatch):
+        calls = {}
+
+        def fake_print(run_dir, open_plots=False):
+            calls["run_dir"] = run_dir
+            calls["open_plots"] = open_plots
+
+        def should_not_be_called(_):
+            raise AssertionError("_latest_run_dir should be skipped with --run-dir")
+
+        monkeypatch.setattr(main_module, "_latest_run_dir", should_not_be_called)
+        monkeypatch.setattr(main_module, "_print_experiment_report", fake_print)
+        rc = main_module.main(
+            [
+                "report",
+                "--config", "configs/nsl_kdd_default.yaml",
+                "--run-dir", "runs/custom",
+                "--open",
+            ]
+        )
+        assert rc == 0
+        assert calls == {"run_dir": "runs/custom", "open_plots": True}
+
+    def test_report_no_runs_returns_1(self, fake_tracker, monkeypatch, capsys):
+        def no_runs(_):
+            raise FileNotFoundError("Runs not found")
+
+        monkeypatch.setattr(main_module, "_latest_run_dir", no_runs)
+        rc = main_module.main(
+            ["report", "--config", "configs/nsl_kdd_default.yaml"]
+        )
+        assert rc == 1
+        assert "Runs not found" in capsys.readouterr().err
+
+    def test_report_prints_metrics_from_json(self, tmp_path, capsys):
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        (run_dir / "metrics.json").write_text(
+            json.dumps(
+                {
+                    "precision_normal": 0.91,
+                    "recall_normal": 0.94,
+                    "f1_normal": 0.92,
+                    "precision_anomalous": 0.93,
+                    "recall_anomalous": 0.90,
+                    "f1_anomalous": 0.91,
+                    "accuracy": 0.92,
+                    "auc_roc": 0.97,
+                    "training_time_secs": 18.3,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (run_dir / "threshold.json").write_text(
+            json.dumps(
+                {
+                    "threshold": 0.35,
+                    "percentile": 95,
+                    "mse_mean": 0.21,
+                    "mse_std": 5.5,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        from main import _print_experiment_report
+
+        _print_experiment_report(str(run_dir))
+        out = capsys.readouterr().out
+        assert "Accuracy" in out and "92.00%" in out
+        assert "AUC-ROC" in out and "0.9700" in out
+        assert "0.350000" in out
+        assert "Precision" in out and "Recall" in out
+
+    def test_report_missing_metrics_raises_file_not_found(self, tmp_path):
+        from main import _print_experiment_report
+
+        with pytest.raises(FileNotFoundError, match="metrics.json"):
+            _print_experiment_report(str(tmp_path))
 
 
 class TestErrorHandling:

@@ -7,20 +7,25 @@ Usage (from the project root):
     .\run.ps1 infer                # classify data/sample_infer.csv with the latest run
     .\run.ps1 infer -Data path.csv # classify a specific CSV
     .\run.ps1 infer -RunDir runs/<ts> [-Data path.csv]
+    .\run.ps1 report               # print a summary of the latest run
+    .\run.ps1 report -Open         # ... and open its plots
+    .\run.ps1 report -RunDir runs/<ts> [-Open]
+    .\run.ps1 open                 # same as `report -Open` (alias)
     .\run.ps1 test                 # run the full test suite with coverage
 
-PYTHONPATH is set automatically, so no environment setup is required.
+`-Open` with no action is treated as `open`. PYTHONPATH is set automatically.
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("setup", "train", "infer", "test", "help")]
+    [ValidateSet("setup", "train", "infer", "test", "report", "open", "help")]
     [string]$Action = "help",
 
     [string]$Config = "configs/nsl_kdd_default.yaml",
     [string]$Data = "data/sample_infer.csv",
-    [string]$RunDir = $null
+    [string]$RunDir = $null,
+    [switch]$Open
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,6 +37,17 @@ function Invoke-Py {
     & python @PyArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
+
+function Invoke-Report {
+    param([switch]$ForceOpen)
+    $base = @("main.py", "report", "--config", $Config)
+    if ($RunDir) { $base += @("--run-dir", $RunDir) }
+    if ($ForceOpen -or $Open) { $base += @("--open") }
+    Invoke-Py @base
+}
+
+# `-Open` without an action word means "open the latest run's plots".
+if ($Action -eq "help" -and $Open) { $Action = "open" }
 
 switch ($Action) {
     "setup" {
@@ -45,11 +61,17 @@ switch ($Action) {
         if ($RunDir) { $base += @("--run-dir", $RunDir) }
         Invoke-Py @base
     }
+    "report" {
+        Invoke-Report
+    }
+    "open" {
+        Invoke-Report -ForceOpen
+    }
     "test" {
         Invoke-Py "-m" "pytest" "tests/" "--cov=network_anomaly_autoencoder" "-q" "-p" "no:cacheprovider"
     }
     default {
         Write-Host "See README.md for the full quickstart:"
-        Get-Content "$RepoRoot\README.md" -TotalCount 60
+        Get-Content "$RepoRoot\README.md" -Encoding UTF8 -TotalCount 60
     }
 }
